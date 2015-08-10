@@ -1,8 +1,8 @@
 nsdo
 ====
 
-This is a simple C program that runs a command inside a given [Linux
-network namespace][1].
+`nsdo` (network namespace do) is a simple C program that runs a command
+inside a given [Linux network namespace][1].
 
 Effectively, it simplifies:
 
@@ -30,6 +30,15 @@ Otherwise:
 To change the default installation directory of `/usr/local`, set
 `PREFIX` to something else when you call `make install`.
 
+openvpn example
+---------------
+
+I wrote this program because I run some applications under a VPN (e.g.,
+clients for peer-to-peer protocols) and leave others untouched (like a
+game client).
+
+For more details, see [openvpn-example.md][5].
+
 license
 -------
 [MIT/X11][3].
@@ -38,6 +47,7 @@ license
 [2]: https://en.wikipedia.org/wiki/Setuid
 [3]: https://github.com/ausbin/nsdo/blob/master/LICENSE
 [4]: https://aur.archlinux.org/packages/nsdo-git/
+[5]: https://github.com/ausbin/nsdo/blob/master/openvpn-example.md
 
 manpage
 -------
