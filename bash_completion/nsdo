@@ -1,0 +1,20 @@
+# nsdo(1) completion                                     -*- shell-script -*-
+
+_nsdo()
+{
+    local cur prev words cword
+    _init_completion || return
+
+    if [[ $COMP_CWORD -eq 1 ]]; then
+        compopt -o filenames
+
+        # assume that the filenames in /var/run/netns don't contain
+        # newlines(!)
+        local IFS=$'\n'
+        COMPREPLY=( $(compgen -W "$(ip netns list)" -- "$cur") )
+    else
+        _command_offset 2
+    fi
+} && complete -F _nsdo nsdo
+
+# ex: ts=4 sw=4 et filetype=sh

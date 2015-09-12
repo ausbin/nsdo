@@ -64,8 +64,8 @@ manpage
     
     DESCRIPTION
            Execute  command  as the current user/group in namespace, a
-           Linux network namespace set up with iproute2 (see  ip-netns
-           (8)).
+           Linux network namespace  set  up  with  iproute2  (see  ip-
+           netns(8)).
     
            By   default,   iproute2   places   network  namespaces  in
            /var/run/netns/,  so  nsdo  searces  for  namespaces  there

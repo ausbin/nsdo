@@ -6,7 +6,7 @@ nsdo \- run a command in a network namespace
 .I namespace command
 [\fIargs\fR ...]
 .SH DESCRIPTION
-Execute \fIcommand\fR as the current user/group in \fInamespace\fR, a Linux network namespace set up with \fBiproute2\fR (see \fBip-netns (8)\fR).
+Execute \fIcommand\fR as the current user/group in \fInamespace\fR, a Linux network namespace set up with \fBiproute2\fR (see \fBip-netns(8)\fR).
 .PP 
 By default, \fBiproute2\fR places network namespaces in /var/run/netns/, so \fBnsdo\fR searces for namespaces there (including \fInamespace\fR).
 To prevent \fIcommand\fR from easily escaping the namespace 'jail,' \fBnsdo\fR will exit if the current namespace exists in that directory. 
