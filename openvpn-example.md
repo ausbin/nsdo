@@ -62,9 +62,9 @@ from my [openvpn configuration file][4]:
     script-security 2
 
 Using [Sebastian's script][1] as a basis, I hacked together the
-following. Notice that it uses iproute2 to create a network namespace
-with the name of the instance's configuration file (`foo` in the earlier
-example).
+following. Notice that it guesses the name of the network namespace
+based on the name of the instance's configuration file (e.g.,
+`/etc/openvpn/foo.conf`→`foo`).
 
     #!/bin/bash
     # based heavily on http://naju.se/articles/openvpn-netns
