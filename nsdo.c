@@ -61,7 +61,7 @@ int current_ns_inode(ino_t *inode) {
     struct stat nsstat;
 
     if (stat("/proc/self/ns/net", &nsstat) == -1) {
-        perror(PROGRAM ": stat(\"/proc/sys/ns/net\")");
+        perror(PROGRAM ": stat(\"/proc/self/ns/net\")");
         return 0;
     }
 
@@ -95,7 +95,9 @@ int inode_in_nspath(ino_t inode) {
         }
 
         if (stat(nspath, &nsstat) == -1) {
-            perror(PROGRAM ": stat");
+            /* i hate to break consistency and use fprintf() rather than
+               perror(), but it's necessary here. */
+            fprintf(stderr, PROGRAM ": stat(\"%s\"): %s\n", nspath, strerror(errno));
             return -1;
         }
 
@@ -106,7 +108,7 @@ int inode_in_nspath(ino_t inode) {
     }
 
     if (errno != 0) {
-        perror(PROGRAM ": readdir");
+        perror(PROGRAM ": readdir(\"" NS_PATH "\")");
         return -1;
     }
 
@@ -137,7 +139,7 @@ int bad_nsname(char *ns) {
 }
 
 int set_netns(char *ns) {
-    int nsfd;
+    int nsfd, perm_issue;
     char *nspath;
 
     if (bad_nsname(ns)) {
@@ -158,7 +160,12 @@ int set_netns(char *ns) {
     free(nspath);
 
     if (setns(nsfd, CLONE_NEWNET) == -1) {
+        perm_issue = errno == EPERM;
         perror(PROGRAM ": setns");
+
+        if (perm_issue)
+            fprintf(stderr, "\nis the " PROGRAM " binary missing the setuid bit?\n");
+
         return 0;
     } else {
         return 1;

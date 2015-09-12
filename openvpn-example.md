@@ -24,6 +24,25 @@ systemd [service][3], which I'll paste here for posterity:
 (For instance, you'd start an openvpn instance configured in
 `/etc/openvpn/foo.conf` with `systemctl start openvpn@foo`.)
 
+To make OpenVPN keep the same network namespace across VPN reconnections
+or daemon restarts (e.g., after a suspend), I put the following in
+`/etc/systemd/system/openvpn@.service.d/netns.conf`:
+
+    [Unit]
+    Requires=netns@%i.service
+    After=netns@%i.service
+
+And then create a `netns@.service` in `/etc/systemd/system`:
+
+    [Unit]
+    Description=network namespace %I
+
+    [Service]
+    Type=oneshot
+    ExecStart=/bin/ip netns add %I
+    ExecStop=/bin/ip netns del %I
+    RemainAfterExit=yes
+
 By default, openvpn manually runs `ifconfig` or `ip` to set up its tun
 device. Luckily for us, you can configure openvpn to run a custom script
 instead. (though you have to set `script-security` >= 2. :( )
@@ -39,7 +58,6 @@ from my [openvpn configuration file][4]:
     route-noexec
     ifconfig-noexec
     up "/usr/local/bin/vpn-ns"
-    down "/usr/local/bin/vpn-ns"
     route-up "/usr/local/bin/vpn-ns"
     script-security 2
 
@@ -78,16 +96,12 @@ example).
 
     case $script_type in
         up)
-            ip netns add "$ns"
             ip -netns "$ns" link set dev lo up
             ip link set dev $dev up netns "$ns" mtu "$tun_mtu"
             ip -netns "$ns" addr add "$ifconfig_local/$netmask" dev "$dev"
         ;;
         route-up)
             ip -netns "$ns" route add default via "$route_vpn_gateway"
-        ;;
-        down)
-            ip netns del "$ns"
         ;;
         *)
             echo "$0: unknown \$script_type: '$script_type'" >&2

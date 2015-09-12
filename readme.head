@@ -6,7 +6,7 @@ inside a given [Linux network namespace][1].
 
 Effectively, it simplifies:
 
-    $ sudo ip netns exec myns sudo -u "$USER" myprogram
+    $ sudo ip netns exec myns sudo -u $USER myprogram
 
 to
 
