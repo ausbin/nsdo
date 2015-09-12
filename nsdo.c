@@ -135,7 +135,7 @@ int already_in_namespace() {
 }
 
 int bad_nsname(char *ns) {
-    return strcmp("..", ns) == 0 || strcmp(".", ns) == 0 || strchr(ns, '/') != NULL;
+    return strlen(ns) == 0 || strcmp("..", ns) == 0 || strcmp(".", ns) == 0 || strchr(ns, '/') != NULL;
 }
 
 int set_netns(char *ns) {
@@ -143,7 +143,7 @@ int set_netns(char *ns) {
     char *nspath;
 
     if (bad_nsname(ns)) {
-        fprintf(stderr, PROGRAM ": namespace names may not contain '/' or be '.', '..'\n");
+        fprintf(stderr, PROGRAM ": namespace names can't contain '/', be empty, or be '.' or '..'.\n");
         return 0;
     }
 
@@ -153,7 +153,7 @@ int set_netns(char *ns) {
     }
 
     if ((nsfd = open(nspath, O_RDONLY)) == -1) {
-        perror(PROGRAM ": open");
+        fprintf(stderr, PROGRAM ": open(\"%s\"): %s\n", nspath, strerror(errno));
         return 0;
     }
 
