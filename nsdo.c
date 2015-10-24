@@ -39,7 +39,8 @@
 #define PROGRAM "nsdo"
 
 enum {
-    EXIT_BAD_INVOCATION = 1,
+    EXIT_OK,
+    EXIT_BAD_INVOCATION,
     EXIT_ALREADY_IN_NAMESPACE,
     EXIT_COULDNT_SETGUID,
     EXIT_BAD_NETNS,
@@ -208,4 +209,6 @@ int main(int argc, char **argv) {
 
     if (!run(argv[ARG_CMD], argv+ARG_CMD))
         return EXIT_FAILED_EXEC;
+
+    return EXIT_OK;
 }
