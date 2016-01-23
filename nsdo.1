@@ -1,15 +1,21 @@
-.TH nsdo 1 2015-08-08
+.TH nsdo 1 2016-01-23
 .SH NAME
 nsdo \- run a command in a network namespace
 .SH SYNOPSIS
 .B nsdo
 .I namespace command
 [\fIargs\fR ...]
+.PP
+.B nsdo
+{ --version | -V }
 .SH DESCRIPTION
 Execute \fIcommand\fR as the current user/group in \fInamespace\fR, a Linux network namespace set up with \fBiproute2\fR (see \fBip-netns(8)\fR).
 .PP 
 By default, \fBiproute2\fR places network namespaces in /var/run/netns/, so \fBnsdo\fR searces for namespaces there (including \fInamespace\fR).
 To prevent \fIcommand\fR from easily escaping the namespace 'jail,' \fBnsdo\fR will exit if the current namespace exists in that directory. 
 Consequently, you can not nest instances of \fBnsdo\fR.
+.SH OPTIONS
+.IP "--version, -V"
+Instead of running a command, print \fBnsdo\fR's version and exit.
 .SH SEE ALSO
 .B ip(8), ip-netns(8), namespaces(7)

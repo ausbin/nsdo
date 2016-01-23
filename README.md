@@ -54,13 +54,13 @@ manpage
 
     nsdo(1)               General Commands Manual              nsdo(1)
     
-    
-    
     NAME
            nsdo - run a command in a network namespace
     
     SYNOPSIS
            nsdo namespace command [args ...]
+    
+           nsdo { --version | -V }
     
     DESCRIPTION
            Execute  command  as the current user/group in namespace, a
@@ -74,9 +74,12 @@ manpage
            rent namespace exists in that directory.  Consequently, you
            can not nest instances of nsdo.
     
+    OPTIONS
+           --version, -V
+                  Instead of running a command, print  nsdo's  version
+                  and exit.
+    
     SEE ALSO
            ip(8), ip-netns(8), namespaces(7)
     
-    
-    
-                                2015-08-08                     nsdo(1)
+                                2016-01-23                     nsdo(1)

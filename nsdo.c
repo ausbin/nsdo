@@ -35,8 +35,11 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#define NS_PATH "/var/run/netns"
 #define PROGRAM "nsdo"
+#define VERSION "1.0"
+#define NS_PATH "/var/run/netns"
+#define VERSION_FLAG "--version"
+#define VERSION_FLAG_SHORT "-V"
 
 enum {
     EXIT_OK,
@@ -54,8 +57,17 @@ enum {
     ARG_MIN_ARGS
 };
 
+void print_version() {
+    puts(PROGRAM " version " VERSION);
+}
+
 void print_usage() {
-    fprintf(stderr, "usage: " PROGRAM " <namespace> <command> [args...]\n");
+    fprintf(stderr, "usage: " PROGRAM " <namespace> <command> [args...]\n"
+                    "       " PROGRAM " { " VERSION_FLAG " | " VERSION_FLAG_SHORT " }\n");
+}
+
+int is_version_flag(char *arg) {
+    return !strcmp(arg, VERSION_FLAG) || !strcmp(arg, VERSION_FLAG_SHORT);
 }
 
 int current_ns_inode(ino_t *inode) {
@@ -193,7 +205,10 @@ int run(char *cmd, char **argv) {
 }
 
 int main(int argc, char **argv) {
-    if (argc < ARG_MIN_ARGS) {
+    if (argc-1 == 1 && is_version_flag(argv[1])) {
+        print_version();
+        return EXIT_OK;
+    } else if (argc < ARG_MIN_ARGS) {
         print_usage();
         return EXIT_BAD_INVOCATION;
     } 
