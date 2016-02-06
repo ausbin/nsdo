@@ -32,7 +32,7 @@ or daemon restarts (e.g., after a suspend), I put the following in
     Requires=netns@%i.service
     After=netns@%i.service
 
-And then create a `netns@.service` in `/etc/systemd/system`:
+And then created a `netns@.service` in `/etc/systemd/system`:
 
     [Unit]
     Description=network namespace %I
@@ -118,7 +118,83 @@ Alternatively, if you don't want to bother with nsdo:
 
     $ sudo ip netns foo sudo -u $USER firefox
 
+addendum: configuring veth
+--------------------------
+*Note: if you're curious about veth, [Scott Lowe's handy blog post][5],
+where I found the commands below, serves as a good introduction.*
+
+Suppose that I want to use nsdo+openvpn as described above to tunnel an
+application that also provides a server (for RPC, for instance). That
+is, I run an application that binds to a port *in* a namespace, but I
+want to connect to it outside of that namespace.
+
+With the setup I've described up to this point, I simply cannot do this.
+Certainly, network namespaces separate running programs from one another
+-- an application can't cross the line willy-nilly. For instance, I
+could not use netcat to listen on a port in one namespace and then
+connect to it from another:
+
+    $ nsdo foo nc -l -p 5050 <<<"hi!" &
+    $ nc -v localhost 5050 <<<"hello"
+    localhost [127.0.0.1] 5050 (mmcc): Connection refused
+    $ nsdo foo !!
+    hi!
+    hello
+
+So (as far as I know) I have no other choice but to use veth, a kernel
+feature [designed][6] to allow network namespaces to communicate. veth
+interfaces act just like any interface but come in pairs -- one for each
+namespace.
+
+You can set them up with a systemd service like the following (I've
+named it `foo-veth.service`):
+
+    [Unit]
+    Description=veth for foo netns
+    After=netns@foo.service
+    
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    # configure our end
+    ExecStart=/usr/bin/ip link add ns-foo up type veth peer name ns-def netns foo
+    ExecStart=/usr/bin/ip addr add 10.0.255.1/24 dev ns-foo
+    # configure vpn end
+    ExecStart=/usr/bin/ip -netns foo link set dev ns-def up
+    ExecStart=/usr/bin/ip -netns foo addr add 10.0.255.2/24 dev ns-def
+    # tear down everything
+    ExecStop=/usr/bin/ip link del ns-foo
+    
+    [Install]
+    WantedBy=netns@foo.service
+
+(Note: I've chosen not to make this example systemd service generic --
+like `netns-veth@.service` -- because I currently use veth with only one
+vpn/namespace and I'm not sure how I'd assign unique IP addresses
+otherwise.)
+
+Now, make `netns@foo` start the new service automatically and then (this
+time) start it manually:
+
+    # systemctl enable foo-veth
+    # systemctl start foo-veth
+
+For convenience, make the name of the namespace resolve to the IP
+address assigned to its corresponding veth interface:
+
+    # printf 'foo\t10.0.255.2\n' >>/etc/hosts
+
+Done! You can now reach servers running in namespaces by simply
+connecting to the namespace by name. If a hypothetical application
+listens on port 5050 in namespace `foo`, for instance, you can access it
+by pointing your client to `foo:5050`:
+
+    $ curl foo:5050
+    Hello, world!
+
 [1]: http://naju.se/articles/openvpn-netns
 [2]: https://projects.archlinux.org/svntogit/packages.git/tree/trunk/openvpn@.service?h=packages/openvpn
 [3]: http://www.freedesktop.org/software/systemd/man/systemd.service.html
 [4]: https://community.openvpn.net/openvpn/wiki/Openvpn23ManPage
+[5]: http://blog.scottlowe.org/2013/09/04/introducing-linux-network-namespaces/
+[6]: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=e314dbdc1c0dc6a548ecf0afce28ecfd538ff568
