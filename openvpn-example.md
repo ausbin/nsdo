@@ -8,29 +8,45 @@ namespace, allowing you to run a bunch of VPNs at the same time, each
 available only to programs you choose.
 
 First, I leverage the [Arch `openvpn` package's `openvpn@.service`][2]
-systemd [service][3], which I'll paste here for posterity:
+systemd [service][3] (based on [upstream's slightly different
+version][7]), which I'll paste here for posterity:
 
     [Unit]
     Description=OpenVPN connection to %i
 
     [Service]
+    PrivateTmp=true
     Type=forking
-    ExecStart=/usr/bin/openvpn --cd /etc/openvpn --config /etc/openvpn/%i.conf --daemon openvpn@%i --writepid /run/openvpn@%i.pid
+    ExecStart=/usr/bin/openvpn --cd /etc/openvpn --config /etc/openvpn/%i.conf --daemon openvpn@%i --writepid /run/openvpn@%i.pid --status-version 2
     PIDFile=/run/openvpn@%i.pid
+    CapabilityBoundingSet=CAP_IPC_LOCK CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW CAP_SETGID CAP_SETUID CAP_SYS_CHROOT CAP_DAC_READ_SEARCH
+    LimitNPROC=10
+    DeviceAllow=/dev/null rw
+    DeviceAllow=/dev/net/tun rw
 
     [Install]
     WantedBy=multi-user.target
 
+
 (For instance, you'd start an openvpn instance configured in
 `/etc/openvpn/foo.conf` with `systemctl start openvpn@foo`.)
 
-To make OpenVPN keep the same network namespace across VPN reconnections
-or daemon restarts (e.g., after a suspend), I put the following in
-`/etc/systemd/system/openvpn@.service.d/netns.conf`:
+However, the unit needs a few modifications. First, calling `setns()` to
+change network namespaces requires [`CAP_SYS_ADMIN`][8], a capability
+the vanilla unit does not provide. Second, to make OpenVPN keep the same
+network namespace across VPN reconnections or daemon restarts (e.g.,
+after a suspend), a separate unit must set up the destination network
+namespace. To solve both issues, I put the following in
+`/etc/systemd/system/openvpn@.service.d/netns.conf`, a [systemd drop-in
+unit][9]:
 
     [Unit]
     Requires=netns@%i.service
     After=netns@%i.service
+
+    [Service]
+    # Needed to call setns() as ip netns does
+    CapabilityBoundingSet=CAP_SYS_ADMIN
 
 And then created a `netns@.service` in `/etc/systemd/system`:
 
@@ -198,3 +214,6 @@ by pointing your client to `foo:5050`:
 [4]: https://community.openvpn.net/openvpn/wiki/Openvpn23ManPage
 [5]: http://blog.scottlowe.org/2013/09/04/introducing-linux-network-namespaces/
 [6]: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=e314dbdc1c0dc6a548ecf0afce28ecfd538ff568
+[7]: https://github.com/OpenVPN/openvpn/blob/master/distro/systemd/openvpn-client%40.service
+[8]: http://manpages.ubuntu.com/manpages/xenial/en/man7/capabilities.7.html
+[9]: https://www.freedesktop.org/software/systemd/man/systemd.unit.html
