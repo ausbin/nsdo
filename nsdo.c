@@ -165,7 +165,7 @@ int set_netns(char *ns) {
         return 0;
     }
 
-    if ((nsfd = open(nspath, O_RDONLY)) == -1) {
+    if ((nsfd = open(nspath, O_RDONLY | O_CLOEXEC)) == -1) {
         fprintf(stderr, PROGRAM ": open(\"%s\"): %s\n", nspath, strerror(errno));
         return 0;
     }
