@@ -37,7 +37,7 @@ I wrote this program because I run some applications under a VPN (e.g.,
 clients for peer-to-peer protocols) and leave others untouched (like a
 game client).
 
-For more details, see [openvpn-example.md][5].
+For more details, see `openvpn-example.md` ([cgit][5], [github][6]).
 
 license
 -------
@@ -47,7 +47,8 @@ license
 [2]: https://en.wikipedia.org/wiki/Setuid
 [3]: https://github.com/ausbin/nsdo/blob/master/LICENSE
 [4]: https://aur.archlinux.org/packages/nsdo-git/
-[5]: https://github.com/ausbin/nsdo/blob/master/openvpn-example.md
+[5]: https://code.austinjadams.com/nsdo/plain/openvpn-example.md
+[6]: https://github.com/ausbin/nsdo/blob/master/openvpn-example.md
 
 manpage
 -------
