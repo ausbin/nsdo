@@ -34,12 +34,16 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/mount.h>
+#include <ftw.h>
 
 #define PROGRAM "nsdo"
 #define VERSION "1.0"
 #define NS_PATH "/var/run/netns"
 #define VERSION_FLAG "--version"
 #define VERSION_FLAG_SHORT "-V"
+#define ETC_PATH "/etc"
+#define ETC_NETNS_PATH "/etc/netns"
 
 enum {
     EXIT_OK,
@@ -47,7 +51,8 @@ enum {
     EXIT_ALREADY_IN_NAMESPACE,
     EXIT_COULDNT_SETGUID,
     EXIT_BAD_NETNS,
-    EXIT_FAILED_EXEC
+    EXIT_FAILED_EXEC,
+    EXIT_FAILED_BIND_MOUNT
 };
 
 enum {
@@ -165,7 +170,7 @@ static int set_netns(char *ns) {
         return 0;
     }
 
-    if ((nsfd = open(nspath, O_RDONLY | O_CLOEXEC)) == -1) {
+    if ((nsfd = open(nspath, O_RDONLY)) == -1) {
         fprintf(stderr, PROGRAM ": open(\"%s\"): %s\n", nspath, strerror(errno));
         free(nspath);
         return 0;
@@ -174,16 +179,78 @@ static int set_netns(char *ns) {
     free(nspath);
 
     if (setns(nsfd, CLONE_NEWNET) == -1) {
-        perm_issue = errno == EPERM;
-        perror(PROGRAM ": setns");
-
-        if (perm_issue)
-            fprintf(stderr, "\nis the " PROGRAM " binary missing the setuid bit?\n");
-
-        return 0;
-    } else {
+;    } else {
         return 1;
     }
+}
+
+static int bind_mount_file(const char *fn, const struct stat *fstat, int flags, struct FTW *ftw) {
+    char newfn[PATH_MAX + 1];
+    const char *relfn;
+    int i;
+
+    /* For files only */
+    if (flags == FTW_F) {
+        relfn = fn;
+        /* Move past "/etc/netns/<ns>/" by skipping 4 slashes. */
+        for (i = 0;  i < 4; i++) {
+            relfn = strstr(relfn, "/");
+            if (!relfn) {
+                fprintf(stderr, PROGRAM ": bind mount pathname was mangled\n");
+                return 1;
+            }
+            relfn++;
+        }
+
+        if (snprintf(newfn, PATH_MAX, ETC_PATH "/%s", relfn) >= PATH_MAX) {
+            fprintf(stderr, PROGRAM ": bind mount pathname was too long\n");
+            return 1;
+        }
+
+        if (mount(fn, newfn, NULL, MS_BIND | MS_PRIVATE, NULL) == -1) {
+            perror(PROGRAM ": mount");
+            return 0;
+        }
+    }
+
+    return 0;
+}
+
+/* Bind mount every file in /etc/netns/<ns> to equivalent in /etc. */
+int bind_mount_etc(char *ns) {
+    char bind_path[PATH_MAX + 1];
+    DIR *dir;
+
+    if (snprintf(bind_path, PATH_MAX, ETC_NETNS_PATH "/%s", ns) >= PATH_MAX) {
+        fprintf(stderr, PROGRAM ": bind mount pathname was too long\n");
+        return 0;
+    }
+
+    /* If bind path is not there, ignore and return success. */
+    if (!(dir = opendir(bind_path))) {
+        return 1;
+    }
+    closedir(dir);
+
+    /* Set up separate mount namespace. */
+    if (unshare(CLONE_NEWNS) == -1) {
+        perror(PROGRAM ": unshare");
+        return 0;
+    }
+
+    /* Remount everything under / in our name space as private. */
+    if (mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL) == -1) {
+        perror(PROGRAM ": mount");
+        return 0;
+    }
+
+    /* Walk the /etc/netns/<ns> tree. */
+    if (nftw(bind_path, bind_mount_file, 20, FTW_PHYS)) {
+        perror(PROGRAM ": nftw");
+        return 0;
+    }
+
+    return 1;
 }
 
 /* set euid+egid to the real uid+gid */
@@ -220,6 +287,9 @@ int main(int argc, char **argv) {
     if (!set_netns(argv[ARG_NETNS]))
         return EXIT_BAD_NETNS;
 
+    if (!bind_mount_etc(argv[ARG_NETNS]))
+        return EXIT_FAILED_BIND_MOUNT;
+
     if (!deescalate())
         return EXIT_COULDNT_SETGUID;
 
@@ -228,3 +298,4 @@ int main(int argc, char **argv) {
 
     return EXIT_OK;
 }
+
