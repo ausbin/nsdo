@@ -170,7 +170,7 @@ static int set_netns(char *ns) {
         return 0;
     }
 
-    if ((nsfd = open(nspath, O_RDONLY)) == -1) {
+    if ((nsfd = open(nspath, O_RDONLY | O_CLOEXEC)) == -1) {
         fprintf(stderr, PROGRAM ": open(\"%s\"): %s\n", nspath, strerror(errno));
         free(nspath);
         return 0;
@@ -179,7 +179,14 @@ static int set_netns(char *ns) {
     free(nspath);
 
     if (setns(nsfd, CLONE_NEWNET) == -1) {
-;    } else {
+        perm_issue = errno == EPERM;
+        perror(PROGRAM ": setns");
+
+        if (perm_issue)
+            fprintf(stderr, "\nis the " PROGRAM " binary missing the setuid bit?\n");
+
+        return 0;
+    } else {
         return 1;
     }
 }
@@ -193,7 +200,7 @@ static int bind_mount_file(const char *fn, const struct stat *fstat, int flags, 
     if (flags == FTW_F) {
         relfn = fn;
         /* Move past "/etc/netns/<ns>/" by skipping 4 slashes. */
-        for (i = 0;  i < 4; i++) {
+        for (i = 0; i < 4; i++) {
             relfn = strstr(relfn, "/");
             if (!relfn) {
                 fprintf(stderr, PROGRAM ": bind mount pathname was mangled\n");
@@ -298,4 +305,3 @@ int main(int argc, char **argv) {
 
     return EXIT_OK;
 }
-
