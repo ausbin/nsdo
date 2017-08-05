@@ -224,7 +224,7 @@ static int bind_mount_file(const char *fn, const struct stat *fstat, int flags, 
 }
 
 /* Bind mount every file in /etc/netns/<ns> to equivalent in /etc. */
-int bind_mount_etc(char *ns) {
+static int bind_mount_etc(char *ns) {
     char bind_path[PATH_MAX + 1];
     DIR *dir;
 
