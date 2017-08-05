@@ -1,4 +1,4 @@
-CFLAGS ?= -Wall -O2
+CFLAGS ?= -Wall -O2 -pedantic
 # if you're building a system package, you should probably set these to
 # /usr, /usr/share/bash-completion/completions, and your package dir
 PREFIX ?= /usr/local
