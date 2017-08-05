@@ -57,20 +57,20 @@ enum {
     ARG_MIN_ARGS
 };
 
-void print_version() {
+static void print_version() {
     puts(PROGRAM " version " VERSION);
 }
 
-void print_usage() {
+static void print_usage() {
     fprintf(stderr, "usage: " PROGRAM " <namespace> <command> [args...]\n"
                     "       " PROGRAM " { " VERSION_FLAG " | " VERSION_FLAG_SHORT " }\n");
 }
 
-int is_version_flag(char *arg) {
+static int is_version_flag(char *arg) {
     return !strcmp(arg, VERSION_FLAG) || !strcmp(arg, VERSION_FLAG_SHORT);
 }
 
-int current_ns_inode(ino_t *inode) {
+static int current_ns_inode(ino_t *inode) {
     struct stat nsstat;
 
     if (stat("/proc/self/ns/net", &nsstat) == -1) {
@@ -87,7 +87,7 @@ int current_ns_inode(ino_t *inode) {
    1: it is
   -1: error encountered
  */
-int inode_in_nspath(ino_t inode) {
+static int inode_in_nspath(ino_t inode) {
     DIR *nsdir;
     char *nspath;
     struct dirent *ns;
@@ -130,7 +130,7 @@ int inode_in_nspath(ino_t inode) {
     return 0;
 }
 
-int already_in_namespace() {
+static int already_in_namespace() {
     int status;
     ino_t inode;
 
@@ -147,11 +147,11 @@ int already_in_namespace() {
     }
 }
 
-int bad_nsname(char *ns) {
+static int bad_nsname(char *ns) {
     return strlen(ns) == 0 || strcmp("..", ns) == 0 || strcmp(".", ns) == 0 || strchr(ns, '/') != NULL;
 }
 
-int set_netns(char *ns) {
+static int set_netns(char *ns) {
     int nsfd, perm_issue;
     char *nspath;
 
@@ -186,7 +186,7 @@ int set_netns(char *ns) {
 }
 
 /* set euid+egid to the real uid+gid */
-int deescalate() {
+static int deescalate() {
     if (setuid(getuid()) == -1 || setgid(getgid()) == -1) {
         perror(PROGRAM ": set[gu]id");
         return 0;
@@ -195,7 +195,7 @@ int deescalate() {
     }
 }
 
-int run(char *cmd, char **argv) {
+static int run(char *cmd, char **argv) {
     if (execvp(cmd, argv) == -1) {
         perror(PROGRAM ": execvp");
         return 0;
