@@ -260,7 +260,11 @@ static int bind_mount_etc(char *ns) {
         free(bind_path);
         return 1;
     }
-    closedir(dir);
+
+    if (closedir(dir) == -1) {
+        perror(PROGRAM ": closedir");
+        goto error;
+    }
 
     /* Set up separate mount namespace. */
     if (unshare(CLONE_NEWNS) == -1) {
