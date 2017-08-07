@@ -194,6 +194,7 @@ static int set_netns(char *ns) {
 static int bind_mount_file(const char *fn, const struct stat *fstat, int flags, struct FTW *ftw) {
     size_t etc_netns_len;
     char *newfn;
+    int missing_mountpoint;
     const char *basename;
 
     /* For files only, strip the /etc/netns/X/ prefix from
@@ -234,7 +235,13 @@ static int bind_mount_file(const char *fn, const struct stat *fstat, int flags, 
         }
 
         if (mount(fn, newfn, NULL, MS_BIND | MS_PRIVATE, NULL) == -1) {
+            missing_mountpoint = errno == ENOENT;
             perror(PROGRAM ": mount");
+
+            if (missing_mountpoint) {
+                fprintf(stderr, "\nMake sure `%s' exists. Without it, we cannot bind-mount `%s' on top of it.\n", newfn, fn);
+            }
+
             free(newfn);
             return 1;
         }
@@ -247,6 +254,7 @@ static int bind_mount_file(const char *fn, const struct stat *fstat, int flags, 
 
 /* Bind mount every file in /etc/netns/<ns> to equivalent in /etc. */
 static int bind_mount_etc(char *ns) {
+    int ret;
     char *bind_path;
     DIR *dir;
 
@@ -255,10 +263,16 @@ static int bind_mount_etc(char *ns) {
         return 0;
     }
 
-    /* If bind path is not there, ignore and return success. */
+    /* If bind path is not there, ignore and return success. Otherwise
+       (such as out of memory), throw an error and bail out. */
     if (!(dir = opendir(bind_path))) {
-        free(bind_path);
-        return 1;
+        if (errno == ENOENT) {
+            free(bind_path);
+            return 1;
+        } else {
+            perror(PROGRAM ": opendir");
+            goto error;
+        }
     }
 
     if (closedir(dir) == -1) {
@@ -279,8 +293,13 @@ static int bind_mount_etc(char *ns) {
     }
 
     /* Walk the /etc/netns/<ns> tree. */
-    if (nftw(bind_path, bind_mount_file, 20, FTW_PHYS)) {
-        perror(PROGRAM ": nftw");
+    if ((ret = nftw(bind_path, bind_mount_file, 20, FTW_PHYS))) {
+        /* nftw() returns -1 for its own problems but will pass back the result
+           of bind_mount_file() if it returns nonzero (when it encounters an
+           error, for which it'll print the error on its own) */
+        if (ret == -1) {
+            perror(PROGRAM ": nftw");
+        }
         goto error;
     }
 
