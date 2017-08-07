@@ -193,7 +193,7 @@ static int set_netns(char *ns) {
 
 static int bind_mount_file(const char *fn, const struct stat *fstat, int flags, struct FTW *ftw) {
     size_t etc_netns_len;
-    char newfn[PATH_MAX + 1];
+    char *newfn;
     const char *basename;
 
     /* For files only, strip the /etc/netns/X/ prefix from
@@ -228,15 +228,18 @@ static int bind_mount_file(const char *fn, const struct stat *fstat, int flags, 
             return 1;
         }
 
-        if (snprintf(newfn, PATH_MAX, ETC_PATH "/%s", basename) >= PATH_MAX) {
-            fprintf(stderr, PROGRAM ": bind mount pathname was too long\n");
+        if (asprintf(&newfn, "%s/%s", ETC_PATH, basename) == -1) {
+            perror(PROGRAM ": asprintf");
             return 1;
         }
 
         if (mount(fn, newfn, NULL, MS_BIND | MS_PRIVATE, NULL) == -1) {
             perror(PROGRAM ": mount");
-            return 0;
+            free(newfn);
+            return 1;
         }
+
+        free(newfn);
     }
 
     return 0;
@@ -244,16 +247,17 @@ static int bind_mount_file(const char *fn, const struct stat *fstat, int flags, 
 
 /* Bind mount every file in /etc/netns/<ns> to equivalent in /etc. */
 static int bind_mount_etc(char *ns) {
-    char bind_path[PATH_MAX + 1];
+    char *bind_path;
     DIR *dir;
 
-    if (snprintf(bind_path, PATH_MAX, ETC_NETNS_PATH "/%s", ns) >= PATH_MAX) {
-        fprintf(stderr, PROGRAM ": bind mount pathname was too long\n");
+    if (asprintf(&bind_path, "%s/%s", ETC_NETNS_PATH, ns) == -1) {
+        perror(PROGRAM ": asprintf");
         return 0;
     }
 
     /* If bind path is not there, ignore and return success. */
     if (!(dir = opendir(bind_path))) {
+        free(bind_path);
         return 1;
     }
     closedir(dir);
@@ -261,22 +265,27 @@ static int bind_mount_etc(char *ns) {
     /* Set up separate mount namespace. */
     if (unshare(CLONE_NEWNS) == -1) {
         perror(PROGRAM ": unshare");
-        return 0;
+        goto error;
     }
 
     /* Remount everything under / in our name space as private. */
     if (mount("none", "/", NULL, MS_REC | MS_PRIVATE, NULL) == -1) {
         perror(PROGRAM ": mount");
-        return 0;
+        goto error;
     }
 
     /* Walk the /etc/netns/<ns> tree. */
     if (nftw(bind_path, bind_mount_file, 20, FTW_PHYS)) {
         perror(PROGRAM ": nftw");
-        return 0;
+        goto error;
     }
 
+    free(bind_path);
     return 1;
+
+    error:
+    free(bind_path);
+    return 0;
 }
 
 /* set euid+egid to the real uid+gid */
