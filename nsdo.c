@@ -192,24 +192,43 @@ static int set_netns(char *ns) {
 }
 
 static int bind_mount_file(const char *fn, const struct stat *fstat, int flags, struct FTW *ftw) {
+    size_t etc_netns_len;
     char newfn[PATH_MAX + 1];
-    const char *relfn;
-    int i;
+    const char *basename;
 
-    /* For files only */
+    /* For files only, strip the /etc/netns/X/ prefix from
+       /etc/netns/X/foo.conf and bind-mount to /etc/foo.conf */
     if (flags == FTW_F) {
-        relfn = fn;
-        /* Move past "/etc/netns/<ns>/" by skipping 4 slashes. */
-        for (i = 0; i < 4; i++) {
-            relfn = strstr(relfn, "/");
-            if (!relfn) {
-                fprintf(stderr, PROGRAM ": bind mount pathname was mangled\n");
-                return 1;
-            }
-            relfn++;
+        basename = fn;
+
+        /* Length of "/etc/netns" or whatever, excluding the null terminator
+           (hence the -1) */
+        etc_netns_len = sizeof ETC_NETNS_PATH - 1;
+
+        if (etc_netns_len > strlen(basename)) {
+            fprintf(stderr, PROGRAM ": bind mount pathname `%s' too short to begin with expected path `%s'!\n", fn, ETC_NETNS_PATH);
+            return 1;
         }
 
-        if (snprintf(newfn, PATH_MAX, ETC_PATH "/%s", relfn) >= PATH_MAX) {
+        basename += etc_netns_len;
+
+        /* If ETC_NETNS_PATH does not end with a /, go ahead and skip past it
+           now */
+        if (*basename == '/') {
+            basename++;
+        }
+
+        /* Now that we've removed the /etc/netns/ part of /etc/netns/X/foo,
+           remove the X/ part.
+           Move pointer to the first character after the last slash, making
+           sure that this this character is not \0 (aka past the end of the
+           string) */
+        if (!(basename = strchr(basename, '/')) || !*++basename) {
+            fprintf(stderr, PROGRAM ": bind mount pathname `%s' was mangled\n", fn);
+            return 1;
+        }
+
+        if (snprintf(newfn, PATH_MAX, ETC_PATH "/%s", basename) >= PATH_MAX) {
             fprintf(stderr, PROGRAM ": bind mount pathname was too long\n");
             return 1;
         }
