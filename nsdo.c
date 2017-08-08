@@ -38,6 +38,7 @@
 #define PROGRAM "nsdo"
 #define VERSION "1.0"
 #define NETNS_PATH "/var/run/netns"
+#define MOUNTNS_PATH "/var/run/mountns"
 #define VERSION_FLAG "--version"
 #define VERSION_FLAG_SHORT "-V"
 
@@ -47,7 +48,8 @@ enum {
     EXIT_ALREADY_IN_NAMESPACE,
     EXIT_COULDNT_SETGUID,
     EXIT_BAD_NETNS,
-    EXIT_FAILED_EXEC
+    EXIT_FAILED_EXEC,
+    EXIT_MOUNTNS_FAIL
 };
 
 enum {
@@ -151,7 +153,7 @@ static int bad_nsname(char *ns) {
     return strlen(ns) == 0 || strcmp("..", ns) == 0 || strcmp(".", ns) == 0 || strchr(ns, '/') != NULL;
 }
 
-static int set_netns(char *ns) {
+static int lookup_and_setns(char *ns, char *nsdir, int nstype, int allow_fail) {
     int nsfd, perm_issue;
     char *nspath;
 
@@ -160,20 +162,24 @@ static int set_netns(char *ns) {
         return 0;
     }
 
-    if (asprintf(&nspath, "%s/%s", NETNS_PATH, ns) == -1) {
+    if (asprintf(&nspath, "%s/%s", nsdir, ns) == -1) {
         perror(PROGRAM ": asprintf");
         return 0;
     }
 
     if ((nsfd = open(nspath, O_RDONLY | O_CLOEXEC)) == -1) {
-        fprintf(stderr, PROGRAM ": open(\"%s\"): %s\n", nspath, strerror(errno));
-        free(nspath);
-        return 0;
+        if (errno == ENOENT && allow_fail) {
+            return 1;
+        } else {
+            fprintf(stderr, PROGRAM ": open(\"%s\"): %s\n", nspath, strerror(errno));
+            free(nspath);
+            return 0;
+        }
     }
 
     free(nspath);
 
-    if (setns(nsfd, CLONE_NEWNET) == -1) {
+    if (setns(nsfd, nstype) == -1) {
         perm_issue = errno == EPERM;
         perror(PROGRAM ": setns");
 
@@ -217,7 +223,12 @@ int main(int argc, char **argv) {
     if (already_in_namespace())
         return EXIT_ALREADY_IN_NAMESPACE;
 
-    if (!set_netns(argv[ARG_NETNS]))
+    /* Change into network namespace */
+    if (!lookup_and_setns(argv[ARG_NETNS], NETNS_PATH, CLONE_NEWNET, 0))
+        return EXIT_BAD_NETNS;
+
+    /* Change into mount namespace if it exists in /var/run/mountns */
+    if (!lookup_and_setns(argv[ARG_NETNS], MOUNTNS_PATH, CLONE_NEWNS, 1))
         return EXIT_BAD_NETNS;
 
     if (!deescalate())
