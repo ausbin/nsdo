@@ -37,7 +37,7 @@
 
 #define PROGRAM "nsdo"
 #define VERSION "1.0"
-#define NS_PATH "/var/run/netns"
+#define NETNS_PATH "/var/run/netns"
 #define VERSION_FLAG "--version"
 #define VERSION_FLAG_SHORT "-V"
 
@@ -93,8 +93,8 @@ static int inode_in_nspath(ino_t inode) {
     struct dirent *ns;
     struct stat nsstat;
 
-    if ((nsdir = opendir(NS_PATH)) == NULL) {
-        perror(PROGRAM ": opendir(\"" NS_PATH "\")");
+    if ((nsdir = opendir(NETNS_PATH)) == NULL) {
+        perror(PROGRAM ": opendir(\"" NETNS_PATH "\")");
         return -1;
     }
 
@@ -102,7 +102,7 @@ static int inode_in_nspath(ino_t inode) {
         if (strcmp(".", ns->d_name) == 0 || strcmp("..", ns->d_name) == 0)
             continue;
 
-        if (asprintf(&nspath, "%s/%s", NS_PATH, ns->d_name) == -1) {
+        if (asprintf(&nspath, "%s/%s", NETNS_PATH, ns->d_name) == -1) {
             perror(PROGRAM ": asprintf");
             return -1;
         }
@@ -121,7 +121,7 @@ static int inode_in_nspath(ino_t inode) {
     }
 
     if (errno != 0) {
-        perror(PROGRAM ": readdir(\"" NS_PATH "\")");
+        perror(PROGRAM ": readdir(\"" NETNS_PATH "\")");
         return -1;
     }
 
@@ -141,7 +141,7 @@ static int already_in_namespace() {
         return 0;
     } else {
         if (status == 1)
-            fprintf(stderr, PROGRAM ": oops! i can run only in network namespaces not found in " NS_PATH "\n");
+            fprintf(stderr, PROGRAM ": oops! i can run only in network namespaces not found in " NETNS_PATH "\n");
 
         return 1;
     }
@@ -160,7 +160,7 @@ static int set_netns(char *ns) {
         return 0;
     }
 
-    if (asprintf(&nspath, "%s/%s", NS_PATH, ns) == -1) {
+    if (asprintf(&nspath, "%s/%s", NETNS_PATH, ns) == -1) {
         perror(PROGRAM ": asprintf");
         return 0;
     }
