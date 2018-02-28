@@ -188,7 +188,7 @@ static int set_netns(char *ns) {
 
 /* set euid+egid to the real uid+gid */
 static int deescalate() {
-    if (setuid(getuid()) == -1 || setgid(getgid()) == -1) {
+    if (setgid(getgid()) == -1 || setuid(getuid()) == -1)  {
         perror(PROGRAM ": set[gu]id");
         return 0;
     } else {
