@@ -80,6 +80,6 @@ manpage
                   and exit.
     
     SEE ALSO
-           ip(8), ip-netns(8), namespaces(7)
+           ip(8), ip-netns(8), namespaces(7), nsenter(1)
     
                                 2016-01-23                     nsdo(1)
