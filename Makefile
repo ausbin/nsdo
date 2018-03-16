@@ -17,6 +17,7 @@ all: $(PROG) $(MANPAGEGZ) $(README)
 
 install: $(PROG) $(MANPAGEGZ)
 	install -Dm4755 $< $(DESTDIR)$(PREFIX)/bin/$<
+	install -Dm755 netns.sh $(DESTDIR)$(PREFIX)/bin/netns.sh
 	install -Dm644 $(word 2,$^) $(DESTDIR)$(PREFIX)/share/man/man$(MANSECTION)/$(word 2,$^)
 	install -Dm644 bash_completion/$(PROG) $(DESTDIR)$(BASH_COMPLETION_DIR)/$(PROG)
 
