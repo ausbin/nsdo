@@ -48,6 +48,8 @@ enum {
     EXIT_ALREADY_IN_NAMESPACE,
     EXIT_COULDNT_SETGUID,
     EXIT_BAD_NETNS,
+    EXIT_COULDNT_GETCWD,
+    EXIT_COULDNT_CHDIR,
     EXIT_FAILED_EXEC,
     EXIT_MOUNTNS_FAIL
 };
@@ -227,9 +229,27 @@ int main(int argc, char **argv) {
     if (!lookup_and_setns(argv[ARG_NETNS], NETNS_PATH, CLONE_NEWNET, 0))
         return EXIT_BAD_NETNS;
 
+    /* This is a GNU extension that I use shamelessly.
+       When we setns() to a different mount namespace, the cwd gets
+       reset to /. So save it here and chdir() to it after setns()ing.*/
+    char *old_cwd = getcwd(NULL, 0);
+
+    if (!old_cwd) {
+        perror("getcwd");
+        return EXIT_COULDNT_GETCWD;
+    }
+
     /* Change into mount namespace if it exists in /var/run/mountns */
     if (!lookup_and_setns(argv[ARG_NETNS], MOUNTNS_PATH, CLONE_NEWNS, 1))
         return EXIT_BAD_NETNS;
+
+    if (chdir(old_cwd) == -1) {
+        perror("chdir");
+        free(old_cwd);
+        return EXIT_COULDNT_CHDIR;
+    }
+
+    free(old_cwd);
 
     if (!deescalate())
         return EXIT_COULDNT_SETGUID;
