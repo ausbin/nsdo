@@ -11,7 +11,7 @@ _nsdo()
         # assume that the filenames in /var/run/netns don't contain
         # newlines(!)
         local IFS=$'\n'
-        COMPREPLY=( $(compgen -W "$(ip netns list)" -- "$cur") )
+        COMPREPLY=( $(compgen -W "$(find /var/run/netns -type f -print0 | xargs -L1 -0 basename)" -- "$cur") )
     else
         _command_offset 2
     fi
