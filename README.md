@@ -93,6 +93,23 @@ If this setup causes trouble on your machine, please open an issue. I
 want to make this robust, but I don't know much about others' VPN
 configurations, so I'm making this up as I go.
 
+#### ssh Configuration with ProxyCommand
+
+It's easy to forget the `nsdo gatech` in front of an `ssh` command, so I
+added the following to my `~/.ssh/config` (last line is the important
+one):
+
+    Host pace
+        User aadams80
+        HostName coc-ice.pace.gatech.edu
+        IdentityFile ~/.ssh/id_rsa_pace
+        IdentitiesOnly yes
+        ProxyCommand /usr/local/bin/nsdo gatech /usr/bin/nc %h %p
+
+Then I can login with simply
+
+    $ ssh pace
+
 #### Finished Product
 
     $ sudo systemctl start openconnect@gatech
