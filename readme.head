@@ -20,15 +20,13 @@ requested command.
 installation
 ------------
 
-If you're on Arch, you can build [my AUR package][4].
-
-Otherwise:
+Run:
 
     $ make
     # make install
 
 To change the default installation directory of `/usr/local`, set
-`PREFIX` to something else when you call `make install`.
+`PREFIX` to something else when you call both `make` and `make install`.
 
 openvpn example
 ---------------
@@ -37,7 +35,7 @@ I wrote this program because I run some applications under a VPN (e.g.,
 clients for peer-to-peer protocols) and leave others untouched (like a
 game client).
 
-For more details, see [my blog post on the subject][5].
+For more details, see [my blog post on the subject][4].
 
 license
 -------
@@ -46,8 +44,7 @@ license
 [1]: https://lwn.net/Articles/580893/
 [2]: https://en.wikipedia.org/wiki/Setuid
 [3]: https://github.com/ausbin/nsdo/blob/master/LICENSE
-[4]: https://aur.archlinux.org/packages/nsdo-git/
-[5]: https://austinjadams.com/blog/running-select-applications-through-openvpn/
+[4]: https://austinjadams.com/blog/running-select-applications-through-openvpn/
 
 manpage
 -------
