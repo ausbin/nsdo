@@ -1,4 +1,4 @@
-.TH nsdo 1 2016-01-23
+.TH nsdo 1 2020-01-23
 .SH NAME
 nsdo \- run a command in a network namespace
 .SH SYNOPSIS
@@ -9,9 +9,10 @@ nsdo \- run a command in a network namespace
 .B nsdo
 { --version | -V }
 .SH DESCRIPTION
-Execute \fIcommand\fR as the current user/group in \fInamespace\fR, a Linux network namespace set up with \fBiproute2\fR (see \fBip-netns(8)\fR).
-.PP 
-By default, \fBiproute2\fR places network namespaces in /var/run/netns/, so \fBnsdo\fR searces for namespaces there (including \fInamespace\fR).
+Execute \fIcommand\fR as the current user/group in \fInamespace\fR, a Linux network namespace set up with the accompanying \fBnetns\fR script or \fBiproute2\fR (see \fBip-netns(8)\fR).
+.PP
+By default, \fBnetns\fR and \fBiproute2\fR place network namespaces in /var/run/netns/, so \fBnsdo\fR searces for namespaces there (including \fInamespace\fR). \fBnetns\fR also places mount namespaces in /var/run/mountns/ corresponding to those in /var/run/netns/, so in addition to the network namespace, \fBnsdo\fR will enter into a corresponding mount namespace if it exists. This way, files in /var/ns-etc/NSNAME/ will show up at /etc/ for applications run using nsdo NSNAME; this notably includes resolv.conf.
+.PP
 To prevent \fIcommand\fR from easily escaping the namespace 'jail,' \fBnsdo\fR will exit if the current namespace exists in that directory. 
 Consequently, you can not nest instances of \fBnsdo\fR.
 .SH OPTIONS

@@ -1,0 +1,8 @@
+[Unit]
+Description=network namespace %I
+
+[Service]
+Type=oneshot
+ExecStart=PREFIX/bin/netns add %I
+ExecStop=PREFIX/bin/netns del %I
+RemainAfterExit=yes

@@ -1,0 +1,12 @@
+[Unit]
+Description=OpenConnect VPN Connection: Profile %I
+Requires=network.target netns@%i.service
+After=network.target netns@%i.service
+
+[Service]
+Type=simple
+WorkingDirectory=PREFIX/share/openconnect/
+ExecStart=PREFIX/share/openconnect/openconnect-wrapper %I
+
+[Install]
+WantedBy=multi-user.target

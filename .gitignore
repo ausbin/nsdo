@@ -1,3 +1,4 @@
 /nsdo
 /nsdo.1.gz
+*.service
 .*.sw?

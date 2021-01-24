@@ -32,7 +32,7 @@
 set -e
 
 usage() {
-    printf 'usage: netns.sh <add|delete> <nsname>\n' >&2
+    printf 'usage: netns.sh <add|del> <nsname>\n' >&2
     exit 1
 }
 
@@ -44,32 +44,29 @@ action=$1
 nsname=$2
 mountns_dir=/var/run/mountns
 mountns_path=$mountns_dir/$nsname
-etc_netns_path=/etc/netns/$nsname
+# Can't use overlayfs to mount /etc/netns/X/ back onto /etc/ because
+# this creates a loop: # https://unix.stackexchange.com/q/578196/62375
+# So put the /etc/ overlay directories at /var/ns-etc instead
+etc_path=/var/ns-etc/$nsname
 
-add() {
-    ip netns add "$nsname"
+_setup_mountns() {
+    mkdir -p "$mountns_dir" "$etc_path"
 
-    if [[ -e $etc_netns_path ]]; then
-        mkdir -p "$mountns_dir" "$etc_netns_path"
-
-        # systemd makes mountpoints shared by default, but they need to
-        # be private to bind-mount /proc/self/ns/mnt to /run/mountns/X.
-        # See:
-        # https://github.com/karelzak/util-linux/issues/289#issuecomment-188224471
-        if ! mountpoint "$mountns_dir" >/dev/null; then
-            mount --bind "$mountns_dir" "$mountns_dir"
-            mount --make-private "$mountns_dir"
-        fi
-
-        touch "$mountns_path"
-        unshare --mount="$mountns_path" \
-            mount -t overlay overlay -o lowerdir="$etc_netns_path:/etc/" /etc/
+    # systemd makes mountpoints shared by default, but they need to
+    # be private to bind-mount /proc/self/ns/mnt to /run/mountns/X.
+    # See:
+    # https://github.com/karelzak/util-linux/issues/289#issuecomment-188224471
+    if ! mountpoint "$mountns_dir" >/dev/null; then
+        mount --bind "$mountns_dir" "$mountns_dir"
+        mount --make-private "$mountns_dir"
     fi
+
+    touch "$mountns_path"
+    unshare --mount="$mountns_path" \
+        mount -t overlay overlay -o lowerdir="$etc_path:/etc/" /etc/
 }
 
-delete() {
-    ip netns delete "$nsname"
-
+_teardown_mountns() {
     if [[ -e $mountns_path ]]; then
         nsenter --mount="$mountns_path" umount /etc/
         umount "$mountns_path"
@@ -77,7 +74,17 @@ delete() {
     fi
 }
 
+add() {
+    ip netns add "$nsname"
+    _setup_mountns
+}
+
+del() {
+    ip netns delete "$nsname"
+    _teardown_mountns
+}
+
 case $action in
-    add|delete) $action ;;
+    add|del) $action ;;
     *) usage ;;
 esac

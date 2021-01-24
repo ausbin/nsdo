@@ -34,7 +34,7 @@
 #include <sys/types.h>
 
 #define PROGRAM "nsdo"
-#define VERSION "1.0"
+#define VERSION "2.0"
 #define NETNS_PATH "/var/run/netns"
 #define MOUNTNS_PATH "/var/run/mountns"
 #define VERSION_FLAG "--version"

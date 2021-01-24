@@ -1,0 +1,50 @@
+#!/bin/bash
+set -e
+
+[[ -z $1 ]] && {
+    printf "$0: usage: $0 <preset>\n" >&2
+    exit 1
+}
+preset="$1"
+preset_file="$(pwd)/$preset.conf"
+
+[[ ! -f $preset_file ]] && {
+    printf "$0: error: profile \`$preset_file' does not exist!\n" >&2
+    exit 1
+}
+
+while read -r line; do
+    key=${line%%=*}
+    val=${line#*=}
+
+    case $key in
+        server|pass1|pass2) printf -v "$key" '%s' "$val";;
+        *) printf "$0: error: profile \`%s' contains unknown config key \`%s'. "`
+                 `"please check the README\n" "$preset_file" "$key" >&2
+           exit 1;;
+    esac
+done <<<$(grep -v '^--' "$preset_file")
+
+readarray -t cmdline <<<"$(grep '^--' "$preset_file")"
+
+if [[ -z $server ]]; then
+    printf "$0: error: please include a server=XXX line in \`$preset_file'\n" >&2
+    exit 1
+fi
+
+if [[ -z $pass1 ]]; then
+    printf "no \`pass' config key in profile \`%s', waiting on "`
+          `"systemd-ask-password...\n" "$preset_file" >&2
+    pass1=$(systemd-ask-password "Password for AnyConnect VPN $preset:")
+fi
+
+if [[ -z $pass2 ]]; then
+    pass=$pass1
+else
+    pass=$pass1$'\n'$pass2
+fi
+
+# vpnc-script-netns expects this to be set
+export NETNS="$preset"
+exec openconnect --script ./vpnc-script-netns --passwd-on-stdin \
+                 --non-inter "${cmdline[@]}" "$server" <<<"$pass"
