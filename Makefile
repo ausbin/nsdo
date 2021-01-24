@@ -1,4 +1,5 @@
-CFLAGS ?= -Wall -O2 -pedantic
+CFLAGS ?= -D_GNU_SOURCE -O2 -pedantic -std=c89 -pedantic -Wall -Werror \
+          -Wextra -Wstrict-prototypes -Wold-style-definition
 # if you're building a system package, you should probably set these to
 # /usr, /usr/share/bash-completion/completions, and your package dir
 PREFIX ?= /usr/local

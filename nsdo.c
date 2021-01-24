@@ -22,8 +22,6 @@
  * SOFTWARE.
  */
 
-#define _GNU_SOURCE
-
 #include <fcntl.h>
 #include <sched.h>
 #include <stdio.h>
@@ -61,11 +59,11 @@ enum {
     ARG_MIN_ARGS
 };
 
-static void print_version() {
+static void print_version(void) {
     puts(PROGRAM " version " VERSION);
 }
 
-static void print_usage() {
+static void print_usage(void) {
     fprintf(stderr, "usage: " PROGRAM " <namespace> <command> [args...]\n"
                     "       " PROGRAM " { " VERSION_FLAG " | " VERSION_FLAG_SHORT " }\n");
 }
@@ -134,7 +132,7 @@ static int inode_in_nspath(ino_t inode) {
     return 0;
 }
 
-static int already_in_namespace() {
+static int already_in_namespace(void) {
     int status;
     ino_t inode;
 
@@ -195,7 +193,7 @@ static int lookup_and_setns(char *ns, char *nsdir, int nstype, int allow_fail) {
 }
 
 /* set euid+egid to the real uid+gid */
-static int deescalate() {
+static int deescalate(void) {
     if (setgid(getgid()) == -1 || setuid(getuid()) == -1) {
         perror(PROGRAM ": set[gu]id");
         return 0;
@@ -214,6 +212,8 @@ static int run(char *cmd, char **argv) {
 }
 
 int main(int argc, char **argv) {
+    char *old_cwd;
+
     if (argc-1 == 1 && is_version_flag(argv[1])) {
         print_version();
         return EXIT_OK;
@@ -232,7 +232,7 @@ int main(int argc, char **argv) {
     /* This is a GNU extension that I use shamelessly.
        When we setns() to a different mount namespace, the cwd gets
        reset to /. So save it here and chdir() to it after setns()ing.*/
-    char *old_cwd = getcwd(NULL, 0);
+    old_cwd = getcwd(NULL, 0);
 
     if (!old_cwd) {
         perror("getcwd");
