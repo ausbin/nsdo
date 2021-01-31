@@ -149,13 +149,13 @@ be able to add the following:
     route-up "/usr/local/bin/openvpn-ns"
     script-security 2
 
-Then you should be able to `sudo systemctl start openvpn@foo`. If you
-encounter problems, please open an issue because I want to understand
-others' VPN/OS situations better.
+Then you should be able to `sudo systemctl start openvpn-client@foo`. If
+you encounter problems, please open an issue because I want to
+understand others' VPN/OS situations better.
 
 #### Finished Product
 
-    $ sudo systemctl start openvpn@foo
+    $ sudo systemctl start openvpn-client@foo
     $ nsdo foo some-graphical-p2p-application &
 
 License
