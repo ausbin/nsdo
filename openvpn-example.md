@@ -1,3 +1,2 @@
-This article has moved to my blog:
-
-<https://austinjadams.com/blog/running-select-applications-through-openvpn/>
+Please see the README for information on configuring an OpenVPN client
+with nsdo.
