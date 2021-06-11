@@ -36,6 +36,10 @@ namespace corresponding to the network namespace, and inside it, mount
 `/var/ns-etc/NSNAME/` with [`overlayfs`][5] on top of `/etc/`. Then,
 when we run something in the network namespace, `nsdo` will call
 `setns()` for this mount namespace as well as the network namespace.
+It mounts `/var/ns-etc/NSNAME/` as the `overlayfs` "upper layer", so
+changes made in the namespace actually persist in `/var/ns-etc/NSNAME/`
+rather than `/etc/`. It cannot mount `/etc/netns/NSNAME/` because
+`overlayfs` [gets upset at the overlap in paths][9].
 
 For convenience, the `nsdo` binary has the [setuid bit][2] set, giving
 it root privileges, which allows it to change namespaces, `setuid()` to
@@ -76,7 +80,7 @@ this:
 
 It's messy, but lines starting with `--` are long options passed
 directly to `openconnect` (see `openconnect(8)` for a list of long
-options). Anything else must be one of the three keys above (`server,
+options). Anything else must be one of the three keys above (`server`,
 `pass1`, `pass2`), which the `openconnect-wrapper` in this repository
 processes and handles for you.
 
@@ -158,6 +162,127 @@ understand others' VPN/OS situations better.
     $ sudo systemctl start openvpn-client@foo
     $ nsdo foo some-graphical-p2p-application &
 
+### Forwarding Ports into a Namespace
+
+By design, applications cannot connect to ports bound in other network
+namespaces. So if you have a server running in some other network
+namespace with nsdo (e.g., a headless peer-to-peer client), you cannot
+connect to it from the default network namespace. For example:
+
+    $ nsdo foo nc -l -p 6969 <<<"hi!" &
+    $ nc -v localhost 6969 <<<"hello"
+    localhost [127.0.0.1] 6969: Connection refused
+    $ nsdo foo nc -v localhost 6969 <<<"hello"
+    hi!
+    hello
+
+You can work around this using `veth`, a kernel feature [designed][10] to
+allow network namespaces to communicate. veth interfaces act just like
+any interface but come in pairs — one for each namespace.
+
+#### The veth systemd unit
+
+I added a new systemd unit, `foo-veth.service` in `/etc/systemd/system/`
+that looks like this:
+
+    [Unit]
+    Description=veth for foo netns
+    After=netns@foo.service
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    # configure our end
+    ExecStart=/usr/bin/ip link add ns-foo up type veth peer name ns-def netns foo
+    ExecStart=/usr/bin/ip addr add 10.0.255.1/24 dev ns-foo
+    # configure vpn end
+    ExecStart=/usr/bin/ip -netns foo link set dev ns-def up
+    ExecStart=/usr/bin/ip -netns foo addr add 10.0.255.2/24 dev ns-def
+    # tear down everything
+    ExecStop=/usr/bin/ip link del ns-foo
+
+    [Install]
+    WantedBy=netns@foo.service
+
+I would make this a template unit named `veth@.service` and commit it to
+this repository so you can install it with the Makefile, but I am not
+sure how best to allocate IP address spaces (e.g., `10.0.255.0/24`)
+based off the instance name (e.g., `foo`). Once I created that, though,
+I enabled the unit (`--now` will start it right now):
+
+    # systemctl daemon-reload
+    # systemctl enable --now foo-veth
+
+Now, if you run `ip link` both inside and outside the namespace, you can
+see the veth interfaces:
+
+    $ ip link
+    ...
+    12: ns-foo@if3: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default qlen 1000
+        link/ether ee:05:c1:aa:83:26 brd ff:ff:ff:ff:ff:ff link-netns foo
+    $ nsdo foo ip link
+    ...
+    3: ns-def@if12: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP mode DEFAULT group default qlen 1000
+        link/ether ee:e1:0b:b9:6b:6f brd ff:ff:ff:ff:ff:ff link-netnsid 0
+
+For convenience, I would add the name of the namespace to `/etc/hosts`:
+
+    10.0.255.2	foo
+
+Now the example from earlier "works", like this:
+
+    $ nsdo foo nc -l -p 6970 <<<"hi!" &
+    $ nc -v foo 6970 <<<"hello"
+    hi!
+    hello
+
+#### Configuring the Server
+
+Now, suppose we have a more realistic situation: we want to run a server
+in the namespace that isn't just an instance of netcat, like an HTTP
+server. Assuming the server has some systemd unit
+`original-server.service`, you can add a drop-in configuration file for
+it at `/etc/systemd/system/original-server.service.d/50-netns.conf` as
+follows (`/usr/bin/the-original-server --original --args` is the
+original command line from `/lib/systemd/system/original-server.service`
+or wherever):
+
+    [Unit]
+    Requires=netns@foo.service
+    After=netns@foo.service
+
+    [Service]
+    ExecStart=
+    ExecStart=/usr/local/bin/nsdo foo /usr/bin/the-original-server --original --args
+
+Then start it up:
+
+    # systemctl daemon-reload
+    # systemctl restart original-server
+
+Now you should be able to access it from the default network namespace.
+For example, if it's an HTTP server listening on port 6969:
+
+    $ curl http://foo:6969/
+    hello, world!
+
+#### Port forwarding with iptables
+
+Suppose the server is now peacefully listening on port 6969 in the `foo`
+network namespace. If you want other machines on the network to be able
+to access that server via port 6969 on the host machine, you can use
+iptables:
+
+    # iptables -A PREROUTING ! -s 10.0.255.0/24 -p tcp -m tcp --dport 6969 -j DNAT --to-destination 10.0.255.2
+    # iptables -A POSTROUTING -o ns-foo -j MASQUERADE
+    # iptables-save
+
+Now, on another machine, we should be able to access the machine
+running the server:
+
+    $ curl http://originalmachine:6969/
+    hello, world!
+
 License
 -------
 [MIT/X11 License][3]
@@ -170,6 +295,8 @@ License
 [6]: https://www.infradead.org/openconnect/
 [7]: https://www.freedesktop.org/software/systemd/man/systemd.unit.html
 [8]: https://github.com/OpenVPN/openvpn/blob/452e016cba977cb1c109e74977029b9c0de33de2/distro/systemd/openvpn-client%40.service.in
+[9]: https://unix.stackexchange.com/q/578196/62375
+[10]: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=e314dbdc1c0dc6a548ecf0afce28ecfd538ff568
 
 Manpage
 -------

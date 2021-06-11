@@ -45,12 +45,16 @@ nsname=$2
 mountns_dir=/var/run/mountns
 mountns_path=$mountns_dir/$nsname
 # Can't use overlayfs to mount /etc/netns/X/ back onto /etc/ because
-# this creates a loop: # https://unix.stackexchange.com/q/578196/62375
+# this creates a loop: https://unix.stackexchange.com/q/578196/62375
 # So put the /etc/ overlay directories at /var/ns-etc instead
 etc_path=/var/ns-etc/$nsname
+# This needs to be on the same filesystem as $etc_path
+workdir_path=/var/ns-workdir/$nsname
 
 _setup_mountns() {
-    mkdir -p "$mountns_dir" "$etc_path"
+    # Overlayfs docs say the workdir needs to be empty
+    rm -rvf "$workdir_path"
+    mkdir -p "$mountns_dir" "$etc_path" "$workdir_path"
 
     # systemd makes mountpoints shared by default, but they need to
     # be private to bind-mount /proc/self/ns/mnt to /run/mountns/X.
@@ -63,7 +67,7 @@ _setup_mountns() {
 
     touch "$mountns_path"
     unshare --mount="$mountns_path" \
-        mount -t overlay overlay -o lowerdir="$etc_path:/etc/" /etc/
+        mount -t overlay overlay -o "upperdir=$etc_path,lowerdir=/etc/,workdir=$workdir_path" /etc/
 }
 
 _teardown_mountns() {
