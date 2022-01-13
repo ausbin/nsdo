@@ -2,14 +2,14 @@ nsdo
 ====
 
 This repository holds my system configuration for running particular
-applications under OpenVPN or Cisco AnyConnect VPNs on Ubuntu. Here are
-my two simultaneous usecases:
+applications under OpenVPN, Cisco AnyConnect, or GlobalProtect VPNs on Ubuntu.
+Here are my two simultaneous usecases:
 
  1. Run clients for some peer-to-peer protocols through OpenVPN without
     affecting other traffic, like browsing Wikipedia, which blocks edits
     from my VPN provider
- 2. `ssh` into a cluster on my university's network via a Cisco
-    AnyConnect VPN without sending my personal traffic through my
+ 2. `ssh` into a cluster on my university's network via a Palo Alto Networks
+    GlobalProtect VPN without sending my personal traffic through my
     university's network
 
 Putting these two VPNs in their own [Linux network namespaces][1] and
@@ -131,6 +131,41 @@ Then I can login with simply
     StateProv:      GA
     PostalCode:     30308
     Country:        US
+
+### Palo Alto Networks GlobalProtect
+
+The Palo Alto Networks website [asserts that "GlobalProtect™ is more than a
+VPN."][11] I agree — it's also a pain in the neck! Thankfully, [openconnect][6]
+has support for GlobalProtect VPNs, so the code from the AnyConnect section
+above works for GlobalProtect as well.
+
+My configuration file for [the new Georgia Tech GlobalProtect VPN][12]
+(`/usr/local/share/openconnect/gatech.conf`) looks like this, pretty similar to
+the AnyConnect example above:
+
+    server=https://vpn.gatech.edu
+    pass1=hunter2
+    pass2=push
+    --protocol=gp
+    --user=aadams80
+
+There was one catch, which is the following error `openconnect` was throwing:
+
+    2 gateway servers available:
+      dc-ext-gw.vpn.gatech.edu (dc-ext-gw.vpn.gatech.edu)
+      ni-ext-gw.vpn.gatech.edu (ni-ext-gw.vpn.gatech.edu)
+    Please select GlobalProtect gateway.
+    GATEWAY: [dc-ext-gw.vpn.gatech.edu|ni-ext-gw.vpn.gatech.edu]:***
+    User input required in non-interactive mode
+
+Changing the `server` line in the configuration above to one of those gateway
+hosts fixed the problem:
+
+    ...
+    server=https://dc-ext-gw.vpn.gatech.edu
+    ...
+
+Otherwise, the advice in the AnyConnection section applies to GlobalProtect.
 
 ### OpenVPN
 
@@ -297,6 +332,8 @@ License
 [8]: https://github.com/OpenVPN/openvpn/blob/452e016cba977cb1c109e74977029b9c0de33de2/distro/systemd/openvpn-client%40.service.in
 [9]: https://unix.stackexchange.com/q/578196/62375
 [10]: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=e314dbdc1c0dc6a548ecf0afce28ecfd538ff568
+[11]: https://web.archive.org/web/20210804030408/https://www.paloaltonetworks.com/products/globalprotect
+[12]: https://gatech.service-now.com/home?id=kb_article_view&sysparm_article=KB0026837
 
 Manpage
 -------
