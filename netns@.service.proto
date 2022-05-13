@@ -1,5 +1,6 @@
 [Unit]
 Description=network namespace %I
+After=snapd.service docker.service
 
 [Service]
 Type=oneshot
