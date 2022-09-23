@@ -154,17 +154,17 @@ the AnyConnect example above:
 There was one catch, which is the following error `openconnect` was throwing:
 
     2 gateway servers available:
-      dc-ext-gw.vpn.gatech.edu (dc-ext-gw.vpn.gatech.edu)
-      ni-ext-gw.vpn.gatech.edu (ni-ext-gw.vpn.gatech.edu)
+      DC Gateway (dc-ext-gw.vpn.gatech.edu)
+      NI Gateway (ni-ext-gw.vpn.gatech.edu)
     Please select GlobalProtect gateway.
-    GATEWAY: [dc-ext-gw.vpn.gatech.edu|ni-ext-gw.vpn.gatech.edu]:***
+    GATEWAY: [DC Gateway|NI Gateway]:***
     User input required in non-interactive mode
 
-Changing the `server` line in the configuration above to one of those gateway
-hosts fixed the problem:
+Adding an `--authgroup` argument to the configuration above [as described in
+the documentation][13] fixed the problem for me:
 
     ...
-    server=https://dc-ext-gw.vpn.gatech.edu
+    --authgroup=DC Gateway
     ...
 
 Otherwise, the advice in the AnyConnection section applies to GlobalProtect.
@@ -336,6 +336,7 @@ License
 [10]: https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=e314dbdc1c0dc6a548ecf0afce28ecfd538ff568
 [11]: https://web.archive.org/web/20210804030408/https://www.paloaltonetworks.com/products/globalprotect
 [12]: https://gatech.service-now.com/home?id=kb_article_view&sysparm_article=KB0026837
+[13]: https://www.infradead.org/openconnect/globalprotect.html
 
 Manpage
 -------
