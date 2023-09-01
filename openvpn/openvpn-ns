@@ -1,6 +1,8 @@
 #!/bin/bash
 # based heavily on http://naju.se/articles/openvpn-netns
 
+PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PATH
+
 [[ $EUID -ne 0 ]] && {
     printf "%s: this program requires root privileges. try again with \`sudo'?\n" "$0" >&2
     exit 1
