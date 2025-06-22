@@ -51,12 +51,12 @@ Installation
 Clone this repository and run:
 
     $ make
-    $ sudo make install install-anyconnect install-openvpn
+    $ sudo make install install-anyconnect install-openvpn install-wireguard
 
 To change the default installation directory of `/usr/local`, set
 `PREFIX` to something else when you call both `make` and `make install`.
-Leave off any of `install-anyconnect` or `install-openvpn` if you don't
-want those configurations.
+Leave off any of `install-anyconnect`, `install-openvpn`, or `install-wireguard`
+if you don't want those configurations.
 
 ### Cisco AnyConnect
 
@@ -196,6 +196,74 @@ understand others' VPN/OS situations better.
 
     $ sudo systemctl start openvpn-client@foo
     $ nsdo foo some-graphical-p2p-application &
+
+### WireGuard
+
+WireGuard is a modern, fast, and secure VPN protocol. This project supports
+running WireGuard interfaces within their own network namespaces.
+
+Prerequisites:
+- Ensure `wireguard-tools` is installed on your system. This package provides
+  `wg` and `wg-quick`.
+
+The `install-wireguard` Makefile target (included by default in `make install`
+if you've run `make` first, or can be run selectively with `sudo make install-wireguard`)
+installs a systemd service template `wg@.service`.
+
+To use it:
+
+1.  **Create a WireGuard configuration file** in `/etc/wireguard/`, for example,
+    `/etc/wireguard/mywg.conf`. This is a standard WireGuard configuration file.
+    Example:
+    ```ini
+    [Interface]
+    PrivateKey = <your-private-key>
+    Address = 10.0.0.2/24
+    DNS = 1.1.1.1, 8.8.8.8 # Optional: DNS servers for the namespace
+
+    [Peer]
+    PublicKey = <server-public-key>
+    AllowedIPs = 0.0.0.0/0, ::/0 # Route all traffic through the VPN
+    Endpoint = <server-ip>:<server-port>
+    ```
+    The `DNS` line in the `[Interface]` section is optional. If provided,
+    the `wg-ns` script will generate a `resolv.conf` for the namespace.
+
+    The `wg-ns` script uses the `wg-quick` command by default. If you need to
+    use a custom wrapper or a different command (e.g., `awg-quick`), you can
+    set the `WG_QUICK_CMD` environment variable before starting the service
+    or for the `wg-ns` script. For systemd, you might need to use an
+    environment file or override the unit.
+
+2.  **Start the systemd service**:
+    Replace `mywg` with the name of your configuration file (without `.conf`).
+    ```bash
+    $ sudo systemctl start wg@mywg
+    ```
+    This will start the WireGuard interface `mywg` (or `wg-mywg` depending on
+    system specifics, but `wg-quick` usually names it after the file) inside
+    the `mywg` network namespace.
+
+3.  **Run applications in the WireGuard namespace**:
+    ```bash
+    $ nsdo mywg curl https://ifconfig.me
+    # This should show the IP address of your WireGuard server.
+    $ nsdo mywg any-other-application
+    ```
+
+If you encounter issues, check the status of the service:
+```bash
+$ sudo systemctl status wg@mywg
+$ journalctl -u wg@mywg
+```
+Also, ensure the `netns@mywg.service` is active, as `wg@mywg.service` depends on it.
+
+#### Finished Product Example
+
+    $ sudo systemctl start wg@mywg
+    $ nsdo mywg curl https://www.cloudflare.com/cdn-cgi/trace | grep ip
+    # Expected output showing an IP address from your WireGuard VPN provider
+    $ nsdo mywg an-application-that-needs-vpn &
 
 ### Forwarding Ports into a Namespace
 

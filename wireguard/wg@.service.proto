@@ -1,0 +1,36 @@
+[Unit]
+Description=WireGuard VPN Connection: Profile %I
+Requires=netns@%i.service
+After=netns@%i.service systemd-networkd.service network-online.target
+Wants=systemd-networkd.service network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Ensure PREFIX is replaced by the Makefile during installation
+ExecStart=PREFIX/bin/wg-ns up %I
+ExecStop=PREFIX/bin/wg-ns down %I
+
+# Standard systemd hardening options
+# PrivateTmp=yes
+# ProtectSystem=full
+# ProtectHome=yes
+# NoNewPrivileges=yes
+# RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX
+# CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_SYS_ADMIN
+# AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+
+# wg-quick needs quite a few capabilities.
+# CAP_NET_ADMIN: for network interface configuration, routing, firewall rules.
+# CAP_NET_RAW: potentially for certain types of packets or configurations.
+# CAP_SYS_ADMIN: for manipulating network namespaces if not already in one (though wg-ns handles this).
+#                wg-quick itself might also need it for certain operations like loading modules,
+#                depending on the system configuration.
+# We'll rely on nsdo's setuid for the initial namespace setup.
+# The wg-ns script itself runs as root.
+# For now, let's keep it simple. If hardening is needed, it can be added later.
+# The openvpn service unit has: CapabilityBoundingSet=CAP_SYS_ADMIN
+# The openconnect service unit doesn't specify additional capabilities.
+
+[Install]
+WantedBy=multi-user.target

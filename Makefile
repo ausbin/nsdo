@@ -14,11 +14,12 @@ MANPAGE = $(PROG).$(MANSECTION)
 MANPAGEGZ = $(MANPAGE).gz
 SYSTEMD_UNIT=netns@.service
 OPENCONNECT_SYSTEMD_UNIT=anyconnect/openconnect@.service
+WIREGUARD_SYSTEMD_UNIT=wireguard/wg@.service
 README = README.md
 
-.PHONY: all install install-anyconnect install-openvpn clean
+.PHONY: all install install-anyconnect install-openvpn install-wireguard clean
 
-all: $(PROG) $(MANPAGEGZ) $(SYSTEMD_UNIT) $(OPENCONNECT_SYSTEMD_UNIT) $(README)
+all: $(PROG) $(MANPAGEGZ) $(SYSTEMD_UNIT) $(OPENCONNECT_SYSTEMD_UNIT) $(WIREGUARD_SYSTEMD_UNIT) $(README)
 
 install: $(PROG) $(MANPAGEGZ) $(SYSTEMD_UNIT) bash_completion/$(PROG)
 	install -Dm4755 $< $(DESTDIR)$(PREFIX)/bin/$<
@@ -36,8 +37,12 @@ install-openvpn: openvpn/50-netns.conf openvpn/openvpn-ns
 	install -Dm644 $< $(DESTDIR)$(PREFIX)/lib/systemd/system/openvpn-client@.service.d/$(notdir $<)
 	install -Dm755 $(word 2,$^) $(DESTDIR)$(PREFIX)/bin/$(notdir $(word 2,$^))
 
+install-wireguard: $(WIREGUARD_SYSTEMD_UNIT) wireguard/wg-ns
+	install -Dm644 $< $(DESTDIR)$(PREFIX)/lib/systemd/system/$(notdir $<)
+	install -Dm755 $(word 2,$^) $(DESTDIR)$(PREFIX)/bin/$(notdir $(word 2,$^))
+
 clean:
-	rm -fv $(PROG) $(MANPAGEGZ) $(SYSTEMD_UNIT) $(OPENCONNECT_SYSTEMD_UNIT) $(README)
+	rm -fv $(PROG) $(MANPAGEGZ) $(SYSTEMD_UNIT) $(OPENCONNECT_SYSTEMD_UNIT) $(WIREGUARD_SYSTEMD_UNIT) $(README)
 
 $(MANPAGEGZ): $(MANPAGE)
 	gzip --best -f -k $<
