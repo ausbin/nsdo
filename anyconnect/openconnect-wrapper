@@ -18,7 +18,7 @@ while read -r line; do
     val=${line#*=}
 
     case $key in
-        server|pass1|pass2) printf -v "$key" '%s' "$val";;
+        server|pass1|pass2|repeat_pass) printf -v "$key" '%s' "$val";;
         *) printf "$0: error: profile \`%s' contains unknown config key \`%s'. "`
                  `"please check the README\n" "$preset_file" "$key" >&2
            exit 1;;
@@ -44,7 +44,11 @@ else
     pass=$pass1$'\n'$pass2
 fi
 
+if [[ -n $repeat_pass ]]; then
+    pass=$pass$'\n'$pass
+fi
+
 # vpnc-script-netns expects this to be set
 export NETNS="$preset"
 exec openconnect --script ./vpnc-script-netns --passwd-on-stdin \
-                 --non-inter "${cmdline[@]}" "$server" <<<"$pass"
+                 "${cmdline[@]}" "$server" <<<"$pass"

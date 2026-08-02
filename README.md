@@ -151,6 +151,12 @@ the AnyConnect example above:
     --protocol=gp
     --user=aadams80
 
+The next two sections discuss how to solve two GlobalProtect problems I have
+hit over the years. Besides these two problems, the advice in the AnyConnection
+section applies to GlobalProtect.
+
+#### Problem #1: Multiple gateways
+
 There was one catch, which is the following error `openconnect` was throwing:
 
     2 gateway servers available:
@@ -167,7 +173,27 @@ the documentation][13] fixed the problem for me:
     --authgroup=DC Gateway
     ...
 
-Otherwise, the advice in the AnyConnection section applies to GlobalProtect.
+The next problem is thrilling.
+
+#### Problem #2: Prompted for password twice
+
+The esteemed Georgia Tech Office of Information Technology has configured their
+VPN server to ask for my password twice. This manifests as the following error,
+which appears to be `openconnect` trying to read from `stdin` after EOF:
+
+    Aug 02 15:35:44 bubba openconnect-wrapper[71609]: Enter login credentials
+    Aug 02 15:35:44 bubba openconnect-wrapper[71609]: Password:
+    Aug 02 15:35:44 bubba openconnect-wrapper[71609]: fgets (stdin): Inappropriate ioctl for device
+
+To address this, I added the following flag to my config file (e.g.
+`/usr/local/share/openconnect/gatech.conf`):
+
+    ...
+    repeat_pass=true
+    ...
+
+When `openconnect-wrapper` sees this, it passes the password twice to
+`openconnect` on stdin.
 
 ### OpenVPN
 
